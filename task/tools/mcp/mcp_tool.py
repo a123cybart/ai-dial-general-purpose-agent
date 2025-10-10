@@ -1,12 +1,12 @@
 import json
 from typing import Any
 
-from aidial_sdk.chat_completion import ToolCall, Stage, Choice, Message, Role
-from pydantic import StrictStr
+from aidial_sdk.chat_completion import Message
 
 from task.tools.base import BaseTool
 from task.tools.mcp.mcp_client import MCPClient
 from task.tools.mcp.mcp_tool_model import MCPToolModel
+from task.tools.models import ToolCallParams
 
 
 class MCPTool(BaseTool):
@@ -15,18 +15,14 @@ class MCPTool(BaseTool):
         self._client = client
         self._mcp_tool_model = mcp_tool_model
 
-    async def execute(self, tool_call: ToolCall, stage: Stage, choice: Choice, api_key: str) -> Message:
-        arguments = json.loads(tool_call.function.arguments)
+    async def _execute(self, tool_call_params: ToolCallParams) -> str | Message:
+        arguments = json.loads(tool_call_params.tool_call.function.arguments)
 
         content = await self._client.call_tool(self.name, arguments)
 
-        stage.append_content(content)
+        tool_call_params.stage.append_content(content)
 
-        return Message(
-            role=Role.TOOL,
-            content=StrictStr(content),
-            tool_call_id=StrictStr(tool_call.id),
-        )
+        return content
 
     @property
     def name(self) -> str:

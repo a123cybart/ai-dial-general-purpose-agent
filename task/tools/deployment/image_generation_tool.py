@@ -1,20 +1,20 @@
 from typing import Any
 
-from aidial_sdk.chat_completion import ToolCall, Stage, Message, Choice
+from aidial_sdk.chat_completion import Message
 
 from task.tools.deployment.base import DeploymentTool
+from task.tools.models import ToolCallParams
 
 
 class ImageGenerationTool(DeploymentTool):
 
-    async def execute(self, tool_call: ToolCall, stage: Stage, choice: Choice, api_key: str) -> Message:
-        msg =  await super().execute(tool_call, stage, choice, api_key)
+    async def _execute(self, tool_call_params: ToolCallParams) -> str | Message:
+        msg = await super()._execute(tool_call_params)
 
         if msg.custom_content and msg.custom_content.attachments:
             for attachment in msg.custom_content.attachments:
                 if attachment.type in ("image/png", "image/jpeg"):
-                    # Here is interesting point, we print the picture in choice directly (in stage it will be added as attachment)
-                    choice.append_content(f"\n\r![image]({attachment.url})\n\r")
+                    tool_call_params.choice.append_content(f"\n\r![image]({attachment.url})\n\r")
                     if not msg.content:
                         msg.content = 'The image has been successfully generated according to request and shown to user!'
 
@@ -71,9 +71,6 @@ class ImageGenerationTool(DeploymentTool):
                 }
             },
             "required": [
-                "prompt",
-                "size",
-                "style",
-                "quality"
+                "prompt"
             ]
         }

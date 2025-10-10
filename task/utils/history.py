@@ -11,6 +11,7 @@ def unpack_messages(messages: list[Message], state_history: list[dict[str, Any]]
     for message in messages:
         if message.role == Role.ASSISTANT:
             if custom_content := message.custom_content:
+                # Unpack tool call history from Assistant message State
                 state = custom_content.state
                 if state and isinstance(state, dict):
                     tool_call_history = state.get(TOOL_CALL_HISTORY_KEY)
@@ -31,10 +32,25 @@ def unpack_messages(messages: list[Message], state_history: list[dict[str, Any]]
                     msg.custom_content = None
                     result.append(msg.dict(exclude_none=True))
         else:
-            msg = copy.deepcopy(message)
-            if msg.custom_content and not msg.custom_content.attachments:
-                msg.custom_content = None
-            result.append(msg.dict(exclude_none=True))
+            attachments_urls_content = ''
+            if message.custom_content and message.custom_content.attachments:
+                attachments_urls_content = '\n\nAttached files URLs:\n'
+                for attachment in message.custom_content.attachments:
+                    if attachment.url:
+                        attachments_urls_content += f"{attachment.url}\n"
+                    elif attachment.reference_url:
+                        attachments_urls_content += f"{attachment.reference_url}\n"
+
+            content = message.content or ''
+            if attachments_urls_content:
+                content += attachments_urls_content
+
+            result.append(
+                {
+                    "role": message.role,
+                    "content": content
+                }
+            )
 
     if state_history:
         for history_msg in state_history:
